@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Devices - OpenWearables{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-microchip"></i>
+                        Connected Devices
+                    </h3>
+                </div>
+                <div class="card-body">
+                    {% if devices.connected_devices %}
+                        <div class="row">
+                            {% for device in devices.connected_devices %}
+                            <div class="col-md-6 col-lg-4 mb-3">
+                                <div class="card device-card">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <h5 class="card-title">{{ device.name }}</h5>
+                                            <span class="badge badge-{{ 'success' if device.status == 'active' or device.status == 'connected' else 'secondary' }}">
+                                                {{ device.status.title() }}
+                                            </span>
+                                        </div>
+                                        <p class="card-text">
+                                            <small class="text-muted">Type: {{ device.type.title() }}</small>
+                                        </p>
+                                        <div class="device-actions">
+                                            {% if device.status == 'active' or device.status == 'connected' %}
+                                                <button class="btn btn-sm btn-outline-warning" onclick="disconnectDevice('{{ device.name }}')">
+                                                    <i class="fas fa-unlink"></i> Disconnect
+                                                </button>
+                                            {% else %}
+                                                <button class="btn btn-sm btn-outline-primary" onclick="connectDevice('{{ device.name }}')">
+                                                    <i class="fas fa-link"></i> Connect
+                                                </button>
+                                            {% endif %}
+                                            <button class="btn btn-sm btn-outline-info" onclick="deviceSettings('{{ device.name }}')">
+                                                <i class="fas fa-cog"></i> Settings
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-microchip fa-3x text-muted mb-3"></i>
+                            <h4 class="text-muted">No Devices Connected</h4>
+                            <p class="text-muted">Connect your OpenWearables devices to start monitoring.</p>
+                            <button class="btn btn-primary" onclick="scanForDevices()">
+                                <i class="fas fa-search"></i> Scan for Devices
+                            </button>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.device-card {
+    transition: transform 0.2s;
+}
+
+.device-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.device-actions {
+    margin-top: 10px;
+}
+
+.device-actions .btn {
+    margin-right: 5px;
+}
+</style>
+
+<script>
+function connectDevice(deviceName) {
+    // Placeholder for device connection logic
+    alert('Connecting to ' + deviceName + '...');
+}
+
+function disconnectDevice(deviceName) {
+    // Placeholder for device disconnection logic
+    alert('Disconnecting from ' + deviceName + '...');
+}
+
+function deviceSettings(deviceName) {
+    // Placeholder for device settings
+    alert('Opening settings for ' + deviceName + '...');
+}
+
+function scanForDevices() {
+    // Placeholder for device scanning
+    alert('Scanning for devices...');
+}
+</script>
+{% endblock %} 

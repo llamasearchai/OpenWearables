@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detailed Analysis - OpenWearables</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/reset.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/variables.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/layout.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <div class="sidebar">
+            <div class="logo">
+                <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="OpenWearables Logo">
+                <h2>OpenWearables</h2>
+            </div>
+            <nav>
+                <a href="{{ url_for('index') }}">
+                    <div class="nav-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+                            <path fill="none" d="M0 0h24v24H0z"/>
+                            <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z" fill="currentColor"/>
+                        </svg>
+                    </div>
+                    Dashboard
+                </a>
+                <a href="{{ url_for('analysis') }}" class="active">
+                    <div class="nav-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+                            <path fill="none" d="M0 0h24v24H0z"/>
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" fill="currentColor"/>
+                        </svg>
+                    </div>
+                    Analysis
+                </a>
+                <a href="{{ url_for('settings') }}">
+                    <div class="nav-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+                            <path fill="none" d="M0 0h24v24H0z"/>
+                            <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" fill="currentColor"/>
+                        </svg>
+                    </div>
+                    Settings
+                </a>
+            </nav>
+            <div class="system-status" id="systemStatusIndicator">
+                <div class="status-indicator"></div>
+                <div class="status-text">
+                    <span>System Status</span>
+                    <span class="status-value">Loading...</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <header>
+                <h1>Detailed Analysis</h1>
+                <div class="date-range-selector">
+                    <label for="timeRange">Time Range:</label>
+                    <select id="timeRange">
+                        <option value="24h">Last 24 Hours</option>
+                        <option value="7d">Last 7 Days</option>
+                        <option value="30d">Last 30 Days</option>
+                        <option value="custom">Custom Range</option>
+                    </select>
+                </div>
+            </header>
+            
+            <!-- Cardiac Analysis -->
+            <div class="glass-card full-width">
+                <div class="card-header">
+                    <h2>Cardiac Analysis</h2>
+                </div>
+                <div class="card-content">
+                    <div class="analysis-grid">
+                        <div class="chart-container" id="heartRateChart"></div>
+                        <div class="chart-container" id="hrvChart"></div>
+                    </div>
+                    <div class="analysis-summary">
+                        <h3>Cardiac Health Summary</h3>
+                        <div class="summary-content" id="cardiacSummary">
+                            <p>Loading cardiac analysis...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Respiratory Analysis -->
+            <div class="glass-card full-width">
+                <div class="card-header">
+                    <h2>Respiratory Analysis</h2>
+                </div>
+                <div class="card-content">
+                    <div class="chart-container" id="spo2TrendChart"></div>
+                    <div class="analysis-summary">
+                        <h3>Respiratory Health Summary</h3>
+                        <div class="summary-content" id="respiratorySummary">
+                            <p>Loading respiratory analysis...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Activity Analysis -->
+            <div class="glass-card full-width">
+                <div class="card-header">
+                    <h2>Activity Analysis</h2>
+                </div>
+                <div class="card-content">
+                    <div class="analysis-grid">
+                        <div class="chart-container" id="activityDistributionChart"></div>
+                        <div class="chart-container" id="activityTrendChart"></div>
+                    </div>
+                    <div class="analysis-summary">
+                        <h3>Activity Summary</h3>
+                        <div class="summary-content" id="activitySummary">
+                            <p>Loading activity analysis...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Anomaly Detection -->
+            <div class="glass-card full-width">
+                <div class="card-header">
+                    <h2>Anomaly Detection</h2>
+                    <div class="filter-controls">
+                        <select id="anomalyFilter">
+                            <option value="all">All Anomalies</option>
+                            <option value="cardiac">Cardiac</option>
+                            <option value="respiratory">Respiratory</option>
+                            <option value="activity">Activity</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <div class="anomalies-container" id="anomaliesContainer">
+                        <div class="no-anomalies">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48">
+                                <path fill="none" d="M0 0h24v24H0z"/>
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" fill="currentColor"/>
+                            </svg>
+                            <p>No anomalies detected in the selected time range.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- AI-Generated Health Insights -->
+            <div class="glass-card full-width">
+                <div class="card-header">
+                    <h2>AI Health Assessment</h2>
+                </div>
+                <div class="card-content">
+                    <div class="health-assessment-container" id="healthAssessmentContainer">
+                        <div class="loading-assessment">
+                            <div class="spinner"></div>
+                            <p>Generating comprehensive health assessment...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script src="{{ url_for('static', filename='js/analysis.js') }}"></script>
+</body>
+</html>

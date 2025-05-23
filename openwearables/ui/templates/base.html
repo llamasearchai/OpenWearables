@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="OpenWearables - Professional AI-Powered Wearable Health Monitoring Platform">
+    <meta name="keywords" content="wearables, health monitoring, AI, medical devices, real-time analytics">
+    <meta name="author" content="OpenWearables Team">
+    
+    <!-- Security Headers -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <meta name="theme-color" content="#007aff">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/favicon.svg') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}">
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='img/apple-touch-icon.png') }}">
+    <link rel="apple-touch-icon" sizes="152x152" href="{{ url_for('static', filename='img/apple-touch-icon-152.png') }}">
+    <link rel="apple-touch-icon" sizes="120x120" href="{{ url_for('static', filename='img/apple-touch-icon-120.png') }}">
+    
+    <!-- Preconnect to external resources -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://cdn.plot.ly">
+    
+    <title>{% block title %}OpenWearables - Professional Health Monitoring{% endblock %}</title>
+    
+    <!-- Core Stylesheets -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/reset.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/variables.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/layout.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/themes.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/animations.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}">
+    
+    <!-- Page-specific styles -->
+    {% block styles %}{% endblock %}
+    
+    <!-- Core JavaScript Libraries -->
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js" defer></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js" defer></script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/static/sw.js')
+                    .then(registration => console.log('SW registered'))
+                    .catch(error => console.log('SW registration failed'));
+            });
+        }
+    </script>
+</head>
+<body class="{% block body_class %}{% endblock %}">
+    <!-- Skip to main content for accessibility -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+    
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen" aria-hidden="true">
+        <div class="loading-content">
+            <div class="loading-logo">
+                <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="OpenWearables">
+            </div>
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Initializing OpenWearables Platform...</div>
+        </div>
+    </div>
+    
+    <!-- Main Application Container -->
+    <div class="app-container" id="app-container">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar" id="sidebar" role="navigation" aria-label="Main navigation">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="OpenWearables Logo" width="40" height="40">
+                    <h1 class="logo-text">OpenWearables</h1>
+                </div>
+                <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle sidebar">
+                    <span class="hamburger"></span>
+                </button>
+            </div>
+            
+            <div class="sidebar-content">
+                <!-- Primary Navigation -->
+                <ul class="nav-menu" role="menubar">
+                    <li role="none">
+                        <a href="{{ url_for('index') }}" 
+                           class="nav-link {% if request.endpoint == 'index' %}active{% endif %}"
+                           role="menuitem"
+                           aria-current="{% if request.endpoint == 'index' %}page{% endif %}">
+                            <span class="nav-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" width="20" height="20">
+                                    <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>
+                                </svg>
+                            </span>
+                            <span class="nav-text">Dashboard</span>
+                        </a>
+                    </li>
+                    <li role="none">
+                        <a href="{{ url_for('analysis') }}" 
+                           class="nav-link {% if request.endpoint == 'analysis' %}active{% endif %}"
+                           role="menuitem"
+                           aria-current="{% if request.endpoint == 'analysis' %}page{% endif %}">
+                            <span class="nav-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" width="20" height="20">
+                                    <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/>
+                                </svg>
+                            </span>
+                            <span class="nav-text">Analysis</span>
+                        </a>
+                    </li>
+                    <li role="none">
+                        <a href="{{ url_for('devices') }}" 
+                           class="nav-link {% if request.endpoint == 'devices' %}active{% endif %}"
+                           role="menuitem"
+                           aria-current="{% if request.endpoint == 'devices' %}page{% endif %}">
+                            <span class="nav-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" width="20" height="20">
+                                    <path d="M17 1H7c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-2-2-2zm0 18H7V5h10v14z"/>
+                                </svg>
+                            </span>
+                            <span class="nav-text">Devices</span>
+                        </a>
+                    </li>
+                    <li role="none">
+                        <a href="{{ url_for('health_insights') }}" 
+                           class="nav-link {% if request.endpoint == 'health_insights' %}active{% endif %}"
+                           role="menuitem"
+                           aria-current="{% if request.endpoint == 'health_insights' %}page{% endif %}">
+                            <span class="nav-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" width="20" height="20">
+                                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                                </svg>
+                            </span>
+                            <span class="nav-text">Health Insights</span>
+                        </a>
+                    </li>
+                    <li role="none">
+                        <a href="{{ url_for('alerts') }}" 
+                           class="nav-link {% if request.endpoint == 'alerts' %}active{% endif %}"
+                           role="menuitem"
+                           aria-current="{% if request.endpoint == 'alerts' %}page{% endif %}">
+                            <span class="nav-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" width="20" height="20">
+                                    <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
+                                </svg>
+                            </span>
+                            <span class="nav-text">Alerts</span>
+                            <span class="nav-badge" id="alerts-count" aria-label="Active alerts">0</span>
+                        </a>
+                    </li>
+                    <li role="none">
+                        <a href="{{ url_for('reports') }}" 
+                           class="nav-link {% if request.endpoint == 'reports' %}active{% endif %}"
+                           role="menuitem"
+                           aria-current="{% if request.endpoint == 'reports' %}page{% endif %}">
+                            <span class="nav-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" width="20" height="20">
+                                    <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+                                </svg>
+                            </span>
+                            <span class="nav-text">Reports</span>
+                        </a>
+                    </li>
+                    <li role="none">
+                        <a href="{{ url_for('settings') }}" 
+                           class="nav-link {% if request.endpoint == 'settings' %}active{% endif %}"
+                           role="menuitem"
+                           aria-current="{% if request.endpoint == 'settings' %}page{% endif %}">
+                            <span class="nav-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" width="20" height="20">
+                                    <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+                                </svg>
+                            </span>
+                            <span class="nav-text">Settings</span>
+                        </a>
+                    </li>
+                </ul>
+                
+                <!-- System Status -->
+                <div class="system-status" role="status" aria-live="polite">
+                    <div class="status-indicator" id="system-status-indicator" aria-hidden="true"></div>
+                    <div class="status-content">
+                        <div class="status-label">System Status</div>
+                        <div class="status-value" id="system-status-text">Initializing...</div>
+                    </div>
+                </div>
+                
+                <!-- User Profile -->
+                <div class="user-profile">
+                    <div class="user-avatar">
+                        <img src="{{ url_for('static', filename='img/default-avatar.svg') }}" alt="User Avatar" id="user-avatar">
+                    </div>
+                    <div class="user-info">
+                        <div class="user-name" id="user-name">Professional User</div>
+                        <div class="user-role">Health Monitor</div>
+                    </div>
+                    <button class="user-menu-toggle" aria-label="User menu" id="user-menu-toggle">
+                        <svg viewBox="0 0 24 24" width="16" height="16">
+                            <path d="M7 10l5 5 5-5z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </nav>
+        
+        <!-- Main Content Area -->
+        <main class="main-content" id="main-content" role="main">
+            <!-- Top Header -->
+            <header class="main-header">
+                <div class="header-left">
+                    <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle navigation menu">
+                        <span class="hamburger"></span>
+                    </button>
+                    <h1 class="page-title">{% block page_title %}Dashboard{% endblock %}</h1>
+                </div>
+                
+                <div class="header-center">
+                    {% block header_center %}{% endblock %}
+                </div>
+                
+                <div class="header-right">
+                    <!-- Theme Toggle -->
+                    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode" title="Toggle theme">
+                        <span class="theme-icon light-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" width="20" height="20">
+                                <path d="M12 2.25a.75.75 0 01.75.75v2.25a.75.75 0 01-1.5 0V3a.75.75 0 01.75-.75zM7.5 12a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM18.894 6.166a.75.75 0 00-1.06-1.06l-1.591 1.59a.75.75 0 101.06 1.061l1.591-1.59zM21.75 12a.75.75 0 01-.75.75h-2.25a.75.75 0 010-1.5H21a.75.75 0 01.75.75zM17.834 18.894a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 10-1.061 1.06l1.59 1.591zM12 18a.75.75 0 01.75.75V21a.75.75 0 01-1.5 0v-2.25A.75.75 0 0112 18zM7.758 17.303a.75.75 0 00-1.061-1.06l-1.591 1.59a.75.75 0 001.06 1.061l1.591-1.59zM6 12a.75.75 0 01-.75.75H3a.75.75 0 010-1.5h2.25A.75.75 0 016 12zM6.697 7.757a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 00-1.061 1.06l1.59 1.591z"/>
+                            </svg>
+                        </span>
+                        <span class="theme-icon dark-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" width="20" height="20">
+                                <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/>
+                            </svg>
+                        </span>
+                    </button>
+                    
+                    <!-- Notifications -->
+                    <button class="notifications-toggle" id="notifications-toggle" aria-label="View notifications" title="Notifications">
+                        <svg viewBox="0 0 24 24" width="20" height="20">
+                            <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
+                        </svg>
+                        <span class="notification-badge" id="notification-count" aria-label="Unread notifications">0</span>
+                    </button>
+                    
+                    <!-- System Controls -->
+                    <div class="system-controls">
+                        {% block header_controls %}
+                        <button class="btn btn-primary" id="start-monitoring" style="display: none;">
+                            <span class="btn-icon">
+                                <svg viewBox="0 0 24 24" width="16" height="16">
+                                    <path d="M8 5v14l11-7z"/>
+                                </svg>
+                            </span>
+                            Start Monitoring
+                        </button>
+                        <button class="btn btn-danger" id="stop-monitoring" style="display: none;">
+                            <span class="btn-icon">
+                                <svg viewBox="0 0 24 24" width="16" height="16">
+                                    <path d="M6 6h12v12H6z"/>
+                                </svg>
+                            </span>
+                            Stop Monitoring
+                        </button>
+                        {% endblock %}
+                    </div>
+                </div>
+            </header>
+            
+            <!-- Page Content -->
+            <div class="page-content">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+    
+    <!-- Notification Toast Container -->
+    <div class="toast-container" id="toast-container" aria-live="polite" aria-atomic="true"></div>
+    
+    <!-- Modal Container -->
+    <div class="modal-overlay" id="modal-overlay" aria-hidden="true">
+        <div class="modal-container" role="dialog" aria-modal="true">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modal-title"></h2>
+                <button class="modal-close" id="modal-close" aria-label="Close modal">
+                    <svg viewBox="0 0 24 24" width="20" height="20">
+                        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body" id="modal-body"></div>
+            <div class="modal-footer" id="modal-footer"></div>
+        </div>
+    </div>
+    
+    <!-- Core JavaScript -->
+    <script src="{{ url_for('static', filename='js/core.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/ui.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/websocket.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/charts.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/notifications.js') }}" defer></script>
+    
+    <!-- Page-specific JavaScript -->
+    {% block scripts %}{% endblock %}
+    
+    <!-- Analytics and Performance Monitoring -->
+    <script>
+        // Performance monitoring
+        window.addEventListener('load', () => {
+            if ('performance' in window) {
+                const perfData = performance.getEntriesByType('navigation')[0];
+                console.log('Page load time:', perfData.loadEventEnd - perfData.loadEventStart, 'ms');
+            }
+        });
+        
+        // Error tracking
+        window.addEventListener('error', (e) => {
+            console.error('Global error:', e.error);
+            // Send to monitoring service in production
+        });
+        
+        // Unhandled promise rejections
+        window.addEventListener('unhandledrejection', (e) => {
+            console.error('Unhandled promise rejection:', e.reason);
+            // Send to monitoring service in production
+        });
+    </script>
+</body>
+</html> 

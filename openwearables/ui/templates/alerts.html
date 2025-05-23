@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Alerts - OpenWearables{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-bell"></i>
+                        System Alerts
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <h4>Active Alerts</h4>
+                    {% if alerts.active_alerts %}
+                        <ul class="list-group mb-4">
+                            {% for alert in alerts.active_alerts %}
+                            <li class="list-group-item list-group-item-{{ alert.type.lower() if alert.type else 'info' }}">
+                                <strong>{{ alert.type.title() if alert.type else 'Info' }}:</strong> {{ alert.message }}
+                                <small class="text-muted float-right">{{ alert.timestamp | format_datetime }}</small>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted">No active alerts.</p>
+                    {% endif %}
+                    
+                    <h4>Alert History</h4>
+                    {% if alerts.alert_history %}
+                        <ul class="list-group">
+                            {% for alert in alerts.alert_history %}
+                            <li class="list-group-item">
+                                {{ alert.message }}
+                                <small class="text-muted float-right">{{ alert.timestamp | format_datetime }}</small>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted">No alert history available.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

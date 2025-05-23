@@ -1,0 +1,409 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openwearables-app
+  namespace: openwearables-production
+  labels:
+    app: openwearables
+    component: backend
+    version: v1
+    environment: production
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: openwearables
+      component: backend
+  template:
+    metadata:
+      labels:
+        app: openwearables
+        component: backend
+        version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: openwearables-service-account
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - openwearables
+              topologyKey: kubernetes.io/hostname
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: topology.kubernetes.io/zone
+        whenUnsatisfiable: DoNotSchedule
+        labelSelector:
+          matchLabels:
+            app: openwearables
+      initContainers:
+      - name: migrate-db
+        image: ${IMAGE_TAG}
+        command: ["python", "-m", "alembic", "upgrade", "head"]
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: openwearables-secrets
+              key: database-url
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: openwearables-secrets
+              key: secret-key
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+      containers:
+      - name: openwearables
+        image: ${IMAGE_TAG}
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+          name: http
+          protocol: TCP
+        env:
+        - name: FLASK_ENV
+          value: "production"
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: openwearables-secrets
+              key: database-url
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: openwearables-secrets
+              key: redis-url
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: openwearables-secrets
+              key: secret-key
+        - name: JWT_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: openwearables-secrets
+              key: jwt-secret-key
+        - name: MONITORING_ENABLED
+          value: "true"
+        - name: LOG_LEVEL
+          value: "INFO"
+        - name: WORKERS
+          value: "4"
+        - name: KUBERNETES_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        volumeMounts:
+        - name: config-volume
+          mountPath: /app/config
+          readOnly: true
+        - name: logs-volume
+          mountPath: /app/logs
+        - name: temp-volume
+          mountPath: /tmp
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          runAsUser: 1000
+          capabilities:
+            drop:
+            - ALL
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+            ephemeral-storage: 1Gi
+          limits:
+            cpu: 2
+            memory: 4Gi
+            ephemeral-storage: 2Gi
+        livenessProbe:
+          httpGet:
+            path: /api/v1/health
+            port: 8000
+            httpHeaders:
+            - name: Host
+              value: localhost
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /api/v1/health
+            port: 8000
+            httpHeaders:
+            - name: Host
+              value: localhost
+          initialDelaySeconds: 15
+          periodSeconds: 5
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        startupProbe:
+          httpGet:
+            path: /api/v1/health
+            port: 8000
+            httpHeaders:
+            - name: Host
+              value: localhost
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 12
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "sleep 10"]
+      volumes:
+      - name: config-volume
+        configMap:
+          name: openwearables-config
+      - name: logs-volume
+        emptyDir:
+          sizeLimit: 1Gi
+      - name: temp-volume
+        emptyDir:
+          sizeLimit: 1Gi
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openwearables-celery-worker
+  namespace: openwearables-production
+  labels:
+    app: openwearables-celery
+    component: worker
+    version: v1
+    environment: production
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: openwearables-celery
+      component: worker
+  template:
+    metadata:
+      labels:
+        app: openwearables-celery
+        component: worker
+        version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9540"
+    spec:
+      serviceAccountName: openwearables-service-account
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+      - name: celery-worker
+        image: ${IMAGE_TAG}
+        command: ["celery", "-A", "openwearables.core.tasks", "worker", "--loglevel=info", "--concurrency=4"]
+        env:
+        - name: FLASK_ENV
+          value: "production"
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: openwearables-secrets
+              key: database-url
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: openwearables-secrets
+              key: redis-url
+        - name: CELERY_BROKER_URL
+          valueFrom:
+            secretKeyRef:
+              name: openwearables-secrets
+              key: celery-broker-url
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: openwearables-secrets
+              key: secret-key
+        volumeMounts:
+        - name: config-volume
+          mountPath: /app/config
+          readOnly: true
+        - name: logs-volume
+          mountPath: /app/logs
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          runAsUser: 1000
+          capabilities:
+            drop:
+            - ALL
+        resources:
+          requests:
+            cpu: 250m
+            memory: 512Mi
+          limits:
+            cpu: 1
+            memory: 2Gi
+        livenessProbe:
+          exec:
+            command:
+            - celery
+            - -A
+            - openwearables.core.tasks
+            - inspect
+            - ping
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+      volumes:
+      - name: config-volume
+        configMap:
+          name: openwearables-config
+      - name: logs-volume
+        emptyDir:
+          sizeLimit: 1Gi
+      terminationGracePeriodSeconds: 60
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openwearables-celery-beat
+  namespace: openwearables-production
+  labels:
+    app: openwearables-celery
+    component: beat
+    version: v1
+    environment: production
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: openwearables-celery
+      component: beat
+  template:
+    metadata:
+      labels:
+        app: openwearables-celery
+        component: beat
+        version: v1
+    spec:
+      serviceAccountName: openwearables-service-account
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+      - name: celery-beat
+        image: ${IMAGE_TAG}
+        command: ["celery", "-A", "openwearables.core.tasks", "beat", "--loglevel=info"]
+        env:
+        - name: FLASK_ENV
+          value: "production"
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: openwearables-secrets
+              key: database-url
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: openwearables-secrets
+              key: redis-url
+        - name: CELERY_BROKER_URL
+          valueFrom:
+            secretKeyRef:
+              name: openwearables-secrets
+              key: celery-broker-url
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: openwearables-secrets
+              key: secret-key
+        volumeMounts:
+        - name: config-volume
+          mountPath: /app/config
+          readOnly: true
+        - name: logs-volume
+          mountPath: /app/logs
+        - name: beat-schedule
+          mountPath: /app/celerybeat-schedule
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          runAsUser: 1000
+          capabilities:
+            drop:
+            - ALL
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+      volumes:
+      - name: config-volume
+        configMap:
+          name: openwearables-config
+      - name: logs-volume
+        emptyDir:
+          sizeLimit: 1Gi
+      - name: beat-schedule
+        emptyDir:
+          sizeLimit: 100Mi
+      terminationGracePeriodSeconds: 30 

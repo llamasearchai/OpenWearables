@@ -1,0 +1,273 @@
+{
+  "device_name": "OpenWearables Professional Platform",
+  "device_id": "ow-prod-001",
+  "version": "1.0.0",
+  "environment": "production",
+  "hardware": {
+    "use_mlx": true,
+    "use_cuda": true,
+    "fallback_cpu": true,
+    "optimization_level": "maximum",
+    "memory_limit_mb": 2048,
+    "parallel_workers": 4
+  },
+  "logging": {
+    "level": "INFO",
+    "file": "logs/openwearables.log",
+    "max_size": "100MB",
+    "backup_count": 5,
+    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    "structured_logging": true
+  },
+  "sensors": {
+    "enabled": ["ecg", "ppg", "accelerometer", "gyroscope", "temperature", "smart_glasses", "smart_headphones", "smart_watch"],
+    "sampling_rates": {
+      "ecg": 500,
+      "ppg": 125,
+      "accelerometer": 100,
+      "gyroscope": 100,
+      "temperature": 2,
+      "smart_glasses": {
+        "eye_tracking": 120,
+        "environmental": 10,
+        "spatial": 60
+      },
+      "smart_headphones": {
+        "audio_health": 48000,
+        "biometric": 25,
+        "spatial_audio": 60
+      },
+      "smart_watch": {
+        "ecg": 500,
+        "ppg": 125,
+        "activity": 50,
+        "environmental": 1
+      }
+    },
+    "calibration": {
+      "auto_calibrate": true,
+      "calibration_interval": 3600,
+      "calibration_samples": 100
+    }
+  },
+  "processing": {
+    "window_size": 10,
+    "overlap": 0.5,
+    "features": ["time_domain", "frequency_domain", "wavelet", "nonlinear"],
+    "real_time": true,
+    "buffer_size": 2000,
+    "max_latency_ms": 50,
+    "preprocessing": {
+      "filters": ["bandpass", "notch", "median"],
+      "artifact_removal": true,
+      "signal_quality_check": true
+    }
+  },
+  "privacy": {
+    "encryption": {
+      "algorithm": "AES-256-GCM",
+      "key_rotation_hours": 24,
+      "at_rest": true,
+      "in_transit": true
+    },
+    "anonymization": {
+      "enabled": true,
+      "method": "differential_privacy",
+      "epsilon": 1.0
+    },
+    "data_retention": {
+      "raw_data_days": 30,
+      "processed_data_days": 90,
+      "aggregated_data_days": 365
+    },
+    "secure_transmission": true,
+    "audit_logging": true,
+    "user_consent": {
+      "required": true,
+      "granular": true,
+      "opt_out_available": true
+    }
+  },
+  "alerts": {
+    "enabled": true,
+    "emergency_alerts": true,
+    "thresholds": {
+      "heart_rate": {
+        "high": 100,
+        "low": 50,
+        "variability_low": 20
+      },
+      "temperature": {
+        "high": 38.5,
+        "low": 35.0
+      },
+      "spo2": {
+        "low": 90
+      },
+      "stress": {
+        "high": 0.8
+      },
+      "activity": {
+        "sedentary_hours": 4
+      }
+    },
+    "notifications": {
+      "channels": ["dashboard", "email", "sms", "push"],
+      "severity_routing": {
+        "critical": ["dashboard", "sms", "push"],
+        "warning": ["dashboard", "email"],
+        "info": ["dashboard"]
+      }
+    },
+    "smart_recommendations": true
+  },
+  "ui": {
+    "theme": "professional",
+    "refresh_rate": 500,
+    "real_time_updates": true,
+    "charts": {
+      "ecg_duration": 30,
+      "ppg_duration": 30,
+      "update_interval": 100,
+      "high_resolution": true
+    },
+    "dashboard": {
+      "widgets": ["vitals", "activity", "stress", "health_score", "alerts", "trends"],
+      "customizable": true,
+      "dark_mode": true
+    },
+    "accessibility": {
+      "wcag_compliance": true,
+      "keyboard_navigation": true,
+      "screen_reader_support": true,
+      "high_contrast": true
+    }
+  },
+  "user_profile": {
+    "required_fields": ["name", "age", "gender"],
+    "optional_fields": ["height", "weight", "medical_conditions", "medications", "emergency_contact", "physician"],
+    "health_goals": {
+      "enabled": true,
+      "categories": ["fitness", "stress_management", "sleep", "heart_health"]
+    },
+    "personalization": {
+      "ai_recommendations": true,
+      "adaptive_thresholds": true,
+      "learning_enabled": true
+    }
+  },
+  "database": {
+    "type": "sqlite",
+    "path": "data/openwearables.db",
+    "backup": {
+      "enabled": true,
+      "interval_hours": 6,
+      "retention_days": 30,
+      "compression": true
+    },
+    "performance": {
+      "index_optimization": true,
+      "vacuum_interval": 24,
+      "wal_mode": true
+    }
+  },
+  "api": {
+    "rate_limiting": {
+      "enabled": true,
+      "requests_per_minute": 1000,
+      "burst_size": 100
+    },
+    "authentication": {
+      "required": true,
+      "method": "jwt",
+      "token_expiry_hours": 24
+    },
+    "cors": {
+      "enabled": true,
+      "origins": ["http://localhost:*", "https://localhost:*"]
+    },
+    "versioning": {
+      "current": "v1",
+      "supported": ["v1"]
+    },
+    "documentation": {
+      "swagger_ui": true,
+      "interactive": true
+    }
+  },
+  "machine_learning": {
+    "models": {
+      "arrhythmia_detection": {
+        "enabled": true,
+        "confidence_threshold": 0.85,
+        "update_frequency": "weekly"
+      },
+      "stress_analysis": {
+        "enabled": true,
+        "confidence_threshold": 0.80,
+        "personalized": true
+      },
+      "activity_recognition": {
+        "enabled": true,
+        "activities": ["walking", "running", "cycling", "sitting", "standing", "sleeping"],
+        "confidence_threshold": 0.90
+      },
+      "health_prediction": {
+        "enabled": true,
+        "prediction_horizon_days": 7,
+        "risk_assessment": true
+      }
+    },
+    "training": {
+      "federated_learning": false,
+      "continuous_learning": true,
+      "privacy_preserving": true
+    },
+    "inference": {
+      "batch_size": 32,
+      "max_latency_ms": 100,
+      "fallback_models": true
+    }
+  },
+  "performance": {
+    "monitoring": {
+      "enabled": true,
+      "metrics": ["latency", "throughput", "memory", "cpu", "accuracy"],
+      "alerts": true
+    },
+    "optimization": {
+      "auto_scaling": false,
+      "caching": {
+        "enabled": true,
+        "ttl_seconds": 300
+      },
+      "compression": true
+    }
+  },
+  "integrations": {
+    "health_platforms": {
+      "apple_health": true,
+      "google_fit": false,
+      "fitbit": false
+    },
+    "cloud_services": {
+      "enabled": false,
+      "provider": "none",
+      "sync_interval_minutes": 60
+    },
+    "third_party_apis": {
+      "weather": false,
+      "location": false
+    }
+  },
+  "deployment": {
+    "mode": "standalone",
+    "clustering": false,
+    "load_balancing": false,
+    "health_checks": {
+      "enabled": true,
+      "interval_seconds": 30,
+      "timeout_seconds": 5
+    }
+  }
+} 

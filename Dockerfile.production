@@ -1,0 +1,115 @@
+# Multi-stage production Dockerfile for OpenWearables
+# Stage 1: Build dependencies and compile assets
+FROM python:3.11-slim as builder
+
+# Set build arguments
+ARG BUILD_ENV=production
+ARG DEBIAN_FRONTEND=noninteractive
+
+# Install system dependencies for building
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    git \
+    libpq-dev \
+    libffi-dev \
+    libssl-dev \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user for security
+RUN groupadd -r openwearables && useradd -r -g openwearables openwearables
+
+# Set working directory
+WORKDIR /app
+
+# Copy requirements first for better caching
+COPY requirements.txt requirements-dev.txt ./
+
+# Install Python dependencies
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir -r requirements.txt && \
+    if [ "$BUILD_ENV" = "development" ]; then pip install --no-cache-dir -r requirements-dev.txt; fi
+
+# Copy source code
+COPY . .
+
+# Install the package
+RUN pip install --no-cache-dir -e .
+
+# Stage 2: Production runtime
+FROM python:3.11-slim as production
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    FLASK_ENV=production \
+    WORKERS=4 \
+    TIMEOUT=120 \
+    KEEPALIVE=2 \
+    MAX_REQUESTS=1000 \
+    MAX_REQUESTS_JITTER=100
+
+# Install runtime dependencies only
+RUN apt-get update && apt-get install -y \
+    libpq5 \
+    curl \
+    dumb-init \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Create non-root user
+RUN groupadd -r openwearables && useradd -r -g openwearables openwearables
+
+# Create necessary directories
+RUN mkdir -p /app/logs /app/data /app/config && \
+    chown -R openwearables:openwearables /app
+
+# Copy built application from builder stage
+COPY --from=builder --chown=openwearables:openwearables /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder --chown=openwearables:openwearables /usr/local/bin /usr/local/bin
+COPY --from=builder --chown=openwearables:openwearables /app /app
+
+# Set working directory
+WORKDIR /app
+
+# Switch to non-root user
+USER openwearables
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8000/api/v1/health || exit 1
+
+# Expose port
+EXPOSE 8000
+
+# Use dumb-init to handle signals properly
+ENTRYPOINT ["dumb-init", "--"]
+
+# Default command - can be overridden
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "4", "--timeout", "120", "--keepalive", "2", "--max-requests", "1000", "--max-requests-jitter", "100", "--worker-class", "gevent", "--worker-connections", "1000", "--preload", "--access-logfile", "-", "--error-logfile", "-", "--log-level", "info", "openwearables.ui.app:app"]
+
+# Stage 3: Development runtime (optional)
+FROM production as development
+
+# Switch back to root to install dev dependencies
+USER root
+
+# Install development tools
+RUN apt-get update && apt-get install -y \
+    vim \
+    htop \
+    strace \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install development Python packages
+COPY requirements-dev.txt .
+RUN pip install --no-cache-dir -r requirements-dev.txt
+
+# Switch back to non-root user
+USER openwearables
+
+# Override command for development
+CMD ["python", "-m", "openwearables.ui.app", "--debug", "--port", "8000"] 

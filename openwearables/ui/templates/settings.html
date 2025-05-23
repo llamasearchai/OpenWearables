@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - OpenWearables</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/reset.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/variables.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/layout.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="logo">
+                <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="OpenWearables Logo">
+                <h2>OpenWearables</h2>
+            </div>
+            <nav>
+                <ul>
+                    <li><a href="/" class="nav-link"><span class="nav-icon">📊</span> Dashboard</a></li>
+                    <li><a href="/analysis" class="nav-link"><span class="nav-icon">🔍</span> Analysis</a></li>
+                    <li><a href="/settings" class="nav-link active"><span class="nav-icon">⚙️</span> Settings</a></li>
+                </ul>
+            </nav>
+        </div>
+        
+        <main class="main-content">
+            <div class="main-header">
+                <h1>Settings</h1>
+                <div class="actions">
+                    <button class="btn" onclick="exportSettings()">Export Config</button>
+                    <button class="btn primary" onclick="saveSettings()">Save Changes</button>
+                </div>
+            </div>
+            
+            <div class="settings-container">
+                <!-- System Settings -->
+                <div class="settings-section">
+                    <h2>System Configuration</h2>
+                    <div class="setting-group">
+                        <label for="deviceName">Device Name</label>
+                        <input type="text" id="deviceName" value="{{ config.get('device_name', 'OpenWearables Device') }}">
+                        <small>A friendly name for this OpenWearables device</small>
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label for="hardwareAccel">Hardware Acceleration</label>
+                        <select id="hardwareAccel">
+                            <option value="mlx" {{ 'selected' if config.get('use_mlx', True) else '' }}>Apple MLX (Apple Silicon)</option>
+                            <option value="cuda" {{ 'selected' if config.get('use_cuda', False) else '' }}>NVIDIA CUDA</option>
+                            <option value="cpu" {{ 'selected' if not config.get('use_mlx', True) and not config.get('use_cuda', False) else '' }}>CPU Only</option>
+                        </select>
+                        <small>Choose the hardware acceleration method for ML models</small>
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label for="logLevel">Logging Level</label>
+                        <select id="logLevel">
+                            <option value="DEBUG" {{ 'selected' if config.get('logging_level') == 'DEBUG' else '' }}>Debug</option>
+                            <option value="INFO" {{ 'selected' if config.get('logging_level', 'INFO') == 'INFO' else '' }}>Info</option>
+                            <option value="WARNING" {{ 'selected' if config.get('logging_level') == 'WARNING' else '' }}>Warning</option>
+                            <option value="ERROR" {{ 'selected' if config.get('logging_level') == 'ERROR' else '' }}>Error</option>
+                        </select>
+                        <small>Set the verbosity of system logging</small>
+                    </div>
+                </div>
+                
+                <!-- Sensor Configuration -->
+                <div class="settings-section">
+                    <h2>Sensor Configuration</h2>
+                    <div class="setting-group">
+                        <label>Active Sensors</label>
+                        <div class="checkbox-group">
+                            {% for sensor in ['ecg', 'ppg', 'accelerometer', 'gyroscope', 'temperature'] %}
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="sensors" value="{{ sensor }}" 
+                                       {{ 'checked' if sensor in config.get('sensors', []) else '' }}>
+                                <span class="checkmark"></span>
+                                {{ sensor.upper() }}
+                            </label>
+                            {% endfor %}
+                        </div>
+                        <small>Select which sensors to enable for data collection</small>
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label for="samplingRate">Sampling Rate (Hz)</label>
+                        <input type="number" id="samplingRate" value="{{ config.get('sampling_rate', 250) }}" min="1" max="1000">
+                        <small>Data sampling frequency in samples per second</small>
+                    </div>
+                </div>
+                
+                <!-- Privacy Settings -->
+                <div class="settings-section">
+                    <h2>Privacy & Security</h2>
+                    <div class="setting-group">
+                        <label class="switch-label">
+                            <input type="checkbox" id="encryption" {{ 'checked' if config.get('privacy', {}).get('encryption', True) else '' }}>
+                            <span class="switch"></span>
+                            Enable Data Encryption
+                        </label>
+                        <small>Encrypt all health data at rest and in transit</small>
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label class="switch-label">
+                            <input type="checkbox" id="anonymization" {{ 'checked' if config.get('privacy', {}).get('anonymization', True) else '' }}>
+                            <span class="switch"></span>
+                            Enable Data Anonymization
+                        </label>
+                        <small>Apply differential privacy to protect individual data</small>
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label for="dataRetention">Data Retention (Days)</label>
+                        <input type="number" id="dataRetention" value="{{ config.get('privacy', {}).get('data_retention', 90) }}" min="1" max="365">
+                        <small>How long to retain health data before automatic deletion</small>
+                    </div>
+                </div>
+                
+                <!-- User Profile -->
+                <div class="settings-section">
+                    <h2>User Profile</h2>
+                    <div class="profile-grid">
+                        <div class="setting-group">
+                            <label for="userName">Name</label>
+                            <input type="text" id="userName" value="{{ config.get('user_profile', {}).get('name', '') }}">
+                        </div>
+                        
+                        <div class="setting-group">
+                            <label for="userAge">Age</label>
+                            <input type="number" id="userAge" value="{{ config.get('user_profile', {}).get('age', '') }}" min="1" max="120">
+                        </div>
+                        
+                        <div class="setting-group">
+                            <label for="userGender">Gender</label>
+                            <select id="userGender">
+                                <option value="">Select...</option>
+                                <option value="male" {{ 'selected' if config.get('user_profile', {}).get('gender') == 'male' else '' }}>Male</option>
+                                <option value="female" {{ 'selected' if config.get('user_profile', {}).get('gender') == 'female' else '' }}>Female</option>
+                                <option value="other" {{ 'selected' if config.get('user_profile', {}).get('gender') == 'other' else '' }}>Other</option>
+                                <option value="prefer_not_to_say" {{ 'selected' if config.get('user_profile', {}).get('gender') == 'prefer_not_to_say' else '' }}>Prefer not to say</option>
+                            </select>
+                        </div>
+                        
+                        <div class="setting-group">
+                            <label for="userHeight">Height (cm)</label>
+                            <input type="number" id="userHeight" value="{{ config.get('user_profile', {}).get('height', '') }}" min="50" max="250">
+                        </div>
+                        
+                        <div class="setting-group">
+                            <label for="userWeight">Weight (kg)</label>
+                            <input type="number" id="userWeight" value="{{ config.get('user_profile', {}).get('weight', '') }}" min="10" max="300">
+                        </div>
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label for="medicalConditions">Medical Conditions</label>
+                        <textarea id="medicalConditions" rows="3">{{ config.get('user_profile', {}).get('medical_conditions', '') }}</textarea>
+                        <small>List any relevant medical conditions (optional)</small>
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label for="medications">Current Medications</label>
+                        <textarea id="medications" rows="3">{{ config.get('user_profile', {}).get('medications', '') }}</textarea>
+                        <small>List current medications (optional)</small>
+                    </div>
+                </div>
+                
+                <!-- About Section -->
+                <div class="settings-section">
+                    <h2>About OpenWearables</h2>
+                    <div class="about-content">
+                        <div class="about-logo">
+                            <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="OpenWearables Logo">
+                        </div>
+                        <div class="about-info">
+                            <h3>OpenWearables</h3>
+                            <p>Version 1.0.0</p>
+                            <p>Advanced wearable AI platform for health monitoring and analysis.</p>
+                            <div class="about-links">
+                                <a href="https://github.com/openwearables/openwearables" target="_blank" class="btn small">GitHub</a>
+                                <a href="https://openwearables.org/docs" target="_blank" class="btn small">Documentation</a>
+                                <a href="https://openwearables.org/license" target="_blank" class="btn small">License</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+    function saveSettings() {
+        // Collect all settings
+        const settings = {
+            system: {
+                device_name: document.getElementById('deviceName').value,
+                use_mlx: document.getElementById('hardwareAccel').value === 'mlx',
+                use_cuda: document.getElementById('hardwareAccel').value === 'cuda',
+                logging_level: document.getElementById('logLevel').value,
+                sensors: Array.from(document.querySelectorAll('input[name="sensors"]:checked')).map(cb => cb.value),
+                sampling_rate: parseInt(document.getElementById('samplingRate').value),
+                privacy: {
+                    encryption: document.getElementById('encryption').checked,
+                    anonymization: document.getElementById('anonymization').checked,
+                    data_retention: parseInt(document.getElementById('dataRetention').value)
+                }
+            },
+            user_profile: {
+                name: document.getElementById('userName').value,
+                age: document.getElementById('userAge').value ? parseInt(document.getElementById('userAge').value) : null,
+                gender: document.getElementById('userGender').value,
+                height: document.getElementById('userHeight').value ? parseInt(document.getElementById('userHeight').value) : null,
+                weight: document.getElementById('userWeight').value ? parseInt(document.getElementById('userWeight').value) : null,
+                medical_conditions: document.getElementById('medicalConditions').value,
+                medications: document.getElementById('medications').value
+            }
+        };
+        
+        // Send to server
+        fetch('/api/settings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(settings)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Settings saved successfully!' + (data.message ? '\n\n' + data.message : ''));
+            } else {
+                alert('Error saving settings: ' + data.error);
+            }
+        })
+        .catch(error => {
+            alert('Error saving settings: ' + error);
+        });
+    }
+    
+    function exportSettings() {
+        // Get current config and export as JSON
+        fetch('/api/settings')
+        .then(response => response.json())
+        .then(config => {
+            const dataStr = JSON.stringify(config, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'openwearables-config.json';
+            link.click();
+        })
+        .catch(error => {
+            alert('Error exporting settings: ' + error);
+        });
+    }
+    </script>
+</body>
+</html>

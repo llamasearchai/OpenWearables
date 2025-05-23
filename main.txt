@@ -1,0 +1,65 @@
+openwearables/
+├── README.md
+├── requirements.txt
+├── requirements-dev.txt
+├── setup.py
+├── .github/
+│   └── workflows/
+│       └── ci-cd.yml
+├── openwearables/
+│   ├── __init__.py
+│   ├── core/
+│   │   ├── __init__.py
+│   │   ├── architecture.py
+│   │   ├── sensor_manager.py
+│   │   ├── data_processor.py
+│   │   ├── health_analyzer.py
+│   │   ├── monitoring.py
+│   │   └── privacy.py
+│   ├── models/
+│   │   ├── __init__.py
+│   │   ├── mlx_models.py
+│   │   ├── torch_models.py
+│   │   └── model_utils.py
+│   ├── cli/
+│   │   ├── __init__.py
+│   │   └── openwearables_cli.py
+│   ├── swift_mlx/
+│   │   ├── __init__.py
+│   │   └── models.py
+│   └── ui/
+│       ├── __init__.py
+│       ├── app.py
+│       ├── api_docs.py
+│       ├── templates/
+│       │   ├── base.html
+│       │   ├── index.html
+│       │   ├── analysis.html
+│       │   ├── dashboard.html
+│       │   └── settings.html
+│       └── static/
+│           ├── css/
+│           │   ├── reset.css
+│           │   ├── variables.css
+│           │   ├── layout.css
+│           │   └── components.css
+│           ├── js/
+│           │   └── dashboard.js
+│           └── img/
+├── config/
+│   └── default.json
+├── k8s/
+│   └── production/
+│       ├── namespace.yaml
+│       ├── deployment.yaml
+│       └── service.yaml
+├── docker-compose.yml
+├── docker-compose.production.yml
+├── Dockerfile
+├── Dockerfile.production
+└── tests/
+    ├── __init__.py
+    ├── test_api.py
+    ├── test_core.py
+    ├── test_models.py
+    └── conftest.py

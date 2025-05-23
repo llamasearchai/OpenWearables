@@ -1,0 +1,804 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - OpenWearables{% endblock %}
+{% block page_title %}Health Dashboard{% endblock %}
+
+{% block styles %}
+<style>
+/* Dashboard-specific styles */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--space-6);
+  margin-bottom: var(--space-6);
+}
+
+.dashboard-widget {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-backdrop);
+  -webkit-backdrop-filter: var(--glass-backdrop);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--glass-shadow);
+  overflow: hidden;
+  transition: all var(--transition-fast);
+}
+
+.dashboard-widget:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.widget-header {
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--border-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.widget-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.widget-icon {
+  width: 20px;
+  height: 20px;
+  opacity: 0.8;
+}
+
+.widget-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.widget-action {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-lg);
+  background: var(--bg-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color var(--transition-fast);
+  opacity: 0.7;
+}
+
+.widget-action:hover {
+  background: var(--bg-quaternary);
+  opacity: 1;
+}
+
+.widget-content {
+  padding: var(--space-6);
+}
+
+.vitals-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--space-4);
+}
+
+.vital-card {
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-xl);
+  padding: var(--space-4);
+  text-align: center;
+  transition: all var(--transition-fast);
+  border: 1px solid var(--border-secondary);
+}
+
+.vital-card:hover {
+  transform: translateY(-1px);
+  border-color: var(--primary-color);
+}
+
+.vital-icon {
+  width: 32px;
+  height: 32px;
+  margin: 0 auto var(--space-2);
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vital-icon.heart-rate { background: rgba(239, 68, 68, 0.1); color: var(--danger-color); }
+.vital-icon.spo2 { background: rgba(14, 165, 233, 0.1); color: var(--info-color); }
+.vital-icon.temperature { background: rgba(245, 158, 11, 0.1); color: var(--warning-color); }
+.vital-icon.hrv { background: rgba(34, 197, 94, 0.1); color: var(--success-color); }
+
+.vital-value {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+  margin-bottom: var(--space-1);
+}
+
+.vital-label {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.vital-trend {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+  font-size: var(--font-size-xs);
+}
+
+.trend-up { color: var(--success-color); }
+.trend-down { color: var(--danger-color); }
+.trend-stable { color: var(--text-tertiary); }
+
+.chart-container {
+  height: 200px;
+  margin-top: var(--space-4);
+}
+
+.chart-container.large {
+  height: 300px;
+}
+
+.status-indicator-large {
+  width: 60px;
+  height: 60px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto var(--space-4);
+  position: relative;
+}
+
+.status-indicator-large::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  right: -4px;
+  bottom: -4px;
+  border-radius: var(--radius-full);
+  background: inherit;
+  opacity: 0.2;
+  animation: pulse-large 2s infinite;
+}
+
+@keyframes pulse-large {
+  0%, 100% { transform: scale(1); opacity: 0.2; }
+  50% { transform: scale(1.1); opacity: 0.1; }
+}
+
+.status-indicator-large.active {
+  background: var(--success-color);
+  color: white;
+}
+
+.status-indicator-large.warning {
+  background: var(--warning-color);
+  color: white;
+}
+
+.status-indicator-large.danger {
+  background: var(--danger-color);
+  color: white;
+}
+
+.health-score {
+  text-align: center;
+  padding: var(--space-6);
+}
+
+.health-score-value {
+  font-size: var(--font-size-6xl);
+  font-weight: var(--font-weight-black);
+  background: linear-gradient(135deg, var(--primary-color), var(--info-color));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: var(--space-2);
+}
+
+.health-score-label {
+  font-size: var(--font-size-lg);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-4);
+}
+
+.health-score-breakdown {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.score-item {
+  text-align: center;
+}
+
+.score-item-value {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+}
+
+.score-item-label {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.activity-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.activity-item {
+  text-align: center;
+  padding: var(--space-3);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-secondary);
+}
+
+.activity-value {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+  margin-bottom: var(--space-1);
+}
+
+.activity-label {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.activity-progress {
+  margin-top: var(--space-2);
+}
+
+.alerts-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.alert-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-2);
+  transition: background-color var(--transition-fast);
+}
+
+.alert-item:hover {
+  background: var(--bg-tertiary);
+}
+
+.alert-item.critical {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.alert-item.warning {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.alert-item.info {
+  background: rgba(14, 165, 233, 0.1);
+  border: 1px solid rgba(14, 165, 233, 0.2);
+}
+
+.alert-item-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.alert-item-content {
+  flex: 1;
+}
+
+.alert-item-title {
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: var(--space-1);
+  font-size: var(--font-size-sm);
+}
+
+.alert-item-message {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-1);
+}
+
+.alert-item-time {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+}
+
+.quick-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--space-3);
+}
+
+.quick-action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-secondary);
+  transition: all var(--transition-fast);
+  text-decoration: none;
+  color: var(--text-primary);
+}
+
+.quick-action:hover {
+  transform: translateY(-2px);
+  border-color: var(--primary-color);
+  background: var(--bg-quaternary);
+}
+
+.quick-action-icon {
+  width: 32px;
+  height: 32px;
+  background: var(--primary-color);
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.quick-action-label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  text-align: center;
+}
+
+.empty-state {
+  text-align: center;
+  padding: var(--space-8);
+  color: var(--text-tertiary);
+}
+
+.empty-state-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto var(--space-4);
+  opacity: 0.5;
+}
+
+.empty-state-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: var(--space-2);
+  color: var(--text-secondary);
+}
+
+.empty-state-message {
+  font-size: var(--font-size-sm);
+  margin-bottom: var(--space-4);
+}
+
+@media (max-width: 768px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .vitals-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .health-score-breakdown {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .activity-summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .quick-actions {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+</style>
+{% endblock %}
+
+{% block header_controls %}
+<div class="system-controls">
+  <button class="btn btn-primary" id="start-monitoring">
+    <span class="btn-icon">
+      <svg viewBox="0 0 24 24" width="16" height="16">
+        <path d="M8 5v14l11-7z"/>
+      </svg>
+    </span>
+    Start Monitoring
+  </button>
+  <button class="btn btn-danger hidden" id="stop-monitoring">
+    <span class="btn-icon">
+      <svg viewBox="0 0 24 24" width="16" height="16">
+        <path d="M6 6h12v12H6z"/>
+      </svg>
+    </span>
+    Stop Monitoring
+  </button>
+  <button class="btn btn-outline" id="export-data">
+    <span class="btn-icon">
+      <svg viewBox="0 0 24 24" width="16" height="16">
+        <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/>
+      </svg>
+    </span>
+    Export
+  </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- System Status Banner -->
+<div class="alert alert-info" id="system-status-banner" style="display: none;">
+  <div class="alert-icon">
+    <svg viewBox="0 0 24 24" width="20" height="20">
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+    </svg>
+  </div>
+  <div class="alert-content">
+    <div class="alert-title">System Status</div>
+    <div id="system-status-message">Monitoring system is ready to start.</div>
+  </div>
+</div>
+
+<!-- Main Dashboard Grid -->
+<div class="dashboard-grid">
+  <!-- Vital Signs Widget -->
+  <div class="dashboard-widget">
+    <div class="widget-header">
+      <div class="widget-title">
+        <svg class="widget-icon" viewBox="0 0 24 24">
+          <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+        </svg>
+        Vital Signs
+      </div>
+      <div class="widget-actions">
+        <button class="widget-action" title="Refresh">
+          <svg viewBox="0 0 24 24" width="16" height="16">
+            <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+          </svg>
+        </button>
+        <button class="widget-action" title="Settings">
+          <svg viewBox="0 0 24 24" width="16" height="16">
+            <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <div class="widget-content">
+      <div class="vitals-grid">
+        <div class="vital-card">
+          <div class="vital-icon heart-rate">
+            <svg viewBox="0 0 24 24" width="20" height="20">
+              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+            </svg>
+          </div>
+          <div class="vital-value" id="heart-rate-value">--</div>
+          <div class="vital-label">Heart Rate</div>
+          <div class="vital-trend trend-stable" id="heart-rate-trend">
+            <svg viewBox="0 0 24 24" width="12" height="12">
+              <path d="M7 14l5-5 5 5z"/>
+            </svg>
+            Stable
+          </div>
+        </div>
+        
+        <div class="vital-card">
+          <div class="vital-icon spo2">
+            <svg viewBox="0 0 24 24" width="20" height="20">
+              <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+            </svg>
+          </div>
+          <div class="vital-value" id="spo2-value">--%</div>
+          <div class="vital-label">SpO₂</div>
+          <div class="vital-trend trend-stable" id="spo2-trend">
+            <svg viewBox="0 0 24 24" width="12" height="12">
+              <path d="M7 14l5-5 5 5z"/>
+            </svg>
+            Normal
+          </div>
+        </div>
+        
+        <div class="vital-card">
+          <div class="vital-icon temperature">
+            <svg viewBox="0 0 24 24" width="20" height="20">
+              <path d="M15 13V5c0-1.66-1.34-3-3-3S9 3.34 9 5v8c-1.21.91-2 2.37-2 4 0 2.76 2.24 5 5 5s5-2.24 5-5c0-1.63-.79-3.09-2-4zm-4-8c0-.55.45-1 1-1s1 .45 1 1h-2z"/>
+            </svg>
+          </div>
+          <div class="vital-value" id="temperature-value">--°C</div>
+          <div class="vital-label">Temperature</div>
+          <div class="vital-trend trend-stable" id="temperature-trend">
+            <svg viewBox="0 0 24 24" width="12" height="12">
+              <path d="M7 14l5-5 5 5z"/>
+            </svg>
+            Normal
+          </div>
+        </div>
+        
+        <div class="vital-card">
+          <div class="vital-icon hrv">
+            <svg viewBox="0 0 24 24" width="20" height="20">
+              <path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99z"/>
+            </svg>
+          </div>
+          <div class="vital-value" id="hrv-value">-- ms</div>
+          <div class="vital-label">HRV (SDNN)</div>
+          <div class="vital-trend trend-stable" id="hrv-trend">
+            <svg viewBox="0 0 24 24" width="12" height="12">
+              <path d="M7 14l5-5 5 5z"/>
+            </svg>
+            Good
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Health Score Widget -->
+  <div class="dashboard-widget">
+    <div class="widget-header">
+      <div class="widget-title">
+        <svg class="widget-icon" viewBox="0 0 24 24">
+          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+        </svg>
+        Health Score
+      </div>
+      <div class="widget-actions">
+        <button class="widget-action" title="View Details">
+          <svg viewBox="0 0 24 24" width="16" height="16">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <div class="widget-content">
+      <div class="health-score">
+        <div class="health-score-value" id="health-score-value">--</div>
+        <div class="health-score-label" id="health-score-label">Calculating...</div>
+        <div class="progress">
+          <div class="progress-bar" id="health-score-progress" style="width: 0%"></div>
+        </div>
+        <div class="health-score-breakdown">
+          <div class="score-item">
+            <div class="score-item-value" id="cardiovascular-score">--</div>
+            <div class="score-item-label">Cardio</div>
+          </div>
+          <div class="score-item">
+            <div class="score-item-value" id="respiratory-score">--</div>
+            <div class="score-item-label">Respiratory</div>
+          </div>
+          <div class="score-item">
+            <div class="score-item-value" id="activity-score">--</div>
+            <div class="score-item-label">Activity</div>
+          </div>
+          <div class="score-item">
+            <div class="score-item-value" id="stress-score">--</div>
+            <div class="score-item-label">Stress</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Real-time Charts Widget -->
+  <div class="dashboard-widget col-span-2">
+    <div class="widget-header">
+      <div class="widget-title">
+        <svg class="widget-icon" viewBox="0 0 24 24">
+          <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/>
+        </svg>
+        Real-time Monitoring
+      </div>
+      <div class="widget-actions">
+        <select class="form-select" id="chart-timeframe" style="width: auto; padding: 4px 8px; font-size: 12px;">
+          <option value="30s">30 seconds</option>
+          <option value="1m">1 minute</option>
+          <option value="5m">5 minutes</option>
+          <option value="15m">15 minutes</option>
+        </select>
+        <button class="widget-action" title="Fullscreen">
+          <svg viewBox="0 0 24 24" width="16" height="16">
+            <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <div class="widget-content">
+      <div class="chart-container large" id="realtime-chart"></div>
+    </div>
+  </div>
+
+  <!-- Activity Summary Widget -->
+  <div class="dashboard-widget">
+    <div class="widget-header">
+      <div class="widget-title">
+        <svg class="widget-icon" viewBox="0 0 24 24">
+          <path d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9l1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4z"/>
+        </svg>
+        Today's Activity
+      </div>
+      <div class="widget-actions">
+        <button class="widget-action" title="View History">
+          <svg viewBox="0 0 24 24" width="16" height="16">
+            <path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <div class="widget-content">
+      <div class="activity-summary">
+        <div class="activity-item">
+          <div class="activity-value" id="steps-value">--</div>
+          <div class="activity-label">Steps</div>
+          <div class="activity-progress">
+            <div class="progress">
+              <div class="progress-bar" id="steps-progress" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="activity-item">
+          <div class="activity-value" id="calories-value">--</div>
+          <div class="activity-label">Calories</div>
+          <div class="activity-progress">
+            <div class="progress">
+              <div class="progress-bar" id="calories-progress" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="activity-item">
+          <div class="activity-value" id="distance-value">--</div>
+          <div class="activity-label">Distance</div>
+          <div class="activity-progress">
+            <div class="progress">
+              <div class="progress-bar" id="distance-progress" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="activity-item">
+          <div class="activity-value" id="active-minutes-value">--</div>
+          <div class="activity-label">Active Min</div>
+          <div class="activity-progress">
+            <div class="progress">
+              <div class="progress-bar" id="active-minutes-progress" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alerts Widget -->
+  <div class="dashboard-widget">
+    <div class="widget-header">
+      <div class="widget-title">
+        <svg class="widget-icon" viewBox="0 0 24 24">
+          <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
+        </svg>
+        Recent Alerts
+      </div>
+      <div class="widget-actions">
+        <button class="widget-action" title="Mark All Read">
+          <svg viewBox="0 0 24 24" width="16" height="16">
+            <path d="M18 7l-1.41-1.41-6.34 6.34 1.41 1.41L18 7zm4.24-1.41L11.66 16.17 7.48 12l-1.41 1.41L11.66 19l12-12-1.42-1.41zM.41 13.41L6 19l1.41-1.41L1.83 12 .41 13.41z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <div class="widget-content">
+      <div class="alerts-list" id="alerts-list">
+        <div class="empty-state">
+          <svg class="empty-state-icon" viewBox="0 0 24 24">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+          </svg>
+          <div class="empty-state-title">No Active Alerts</div>
+          <div class="empty-state-message">Your health metrics are within normal ranges.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Actions Widget -->
+  <div class="dashboard-widget">
+    <div class="widget-header">
+      <div class="widget-title">
+        <svg class="widget-icon" viewBox="0 0 24 24">
+          <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+        </svg>
+        Quick Actions
+      </div>
+    </div>
+    <div class="widget-content">
+      <div class="quick-actions">
+        <a href="/analysis" class="quick-action">
+          <div class="quick-action-icon">
+            <svg viewBox="0 0 24 24" width="20" height="20">
+              <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/>
+            </svg>
+          </div>
+          <div class="quick-action-label">View Analysis</div>
+        </a>
+        
+        <a href="/devices" class="quick-action">
+          <div class="quick-action-icon">
+            <svg viewBox="0 0 24 24" width="20" height="20">
+              <path d="M17 1H7c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-2-2-2zm0 18H7V5h10v14z"/>
+            </svg>
+          </div>
+          <div class="quick-action-label">Manage Devices</div>
+        </a>
+        
+        <a href="/reports" class="quick-action">
+          <div class="quick-action-icon">
+            <svg viewBox="0 0 24 24" width="20" height="20">
+              <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/>
+            </svg>
+          </div>
+          <div class="quick-action-label">Generate Report</div>
+        </a>
+        
+        <a href="/settings" class="quick-action">
+          <div class="quick-action-icon">
+            <svg viewBox="0 0 24 24" width="20" height="20">
+              <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+            </svg>
+          </div>
+          <div class="quick-action-label">Settings</div>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+<script>
+// Initialize dashboard
+document.addEventListener('DOMContentLoaded', function() {
+  // Initialize real-time monitoring
+  if (typeof DashboardManager !== 'undefined') {
+    window.dashboard = new DashboardManager();
+    window.dashboard.init();
+  }
+  
+  // Hide loading screen
+  setTimeout(() => {
+    const loadingScreen = document.getElementById('loading-screen');
+    if (loadingScreen) {
+      loadingScreen.classList.add('hidden');
+    }
+  }, 1000);
+});
+</script>
+{% endblock %} 

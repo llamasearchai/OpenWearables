@@ -1,0 +1,367 @@
+version: '3.8'
+
+services:
+  # Main OpenWearables Application
+  openwearables-app:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+      args:
+        - BUILD_ENV=production
+    image: openwearables:latest
+    container_name: openwearables-app
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_URL=postgresql://openwearables:${DB_PASSWORD}@postgres:5432/openwearables
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - SECRET_KEY=${SECRET_KEY}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - MONITORING_ENABLED=true
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+      - ./config:/app/config:ro
+    depends_on:
+      - postgres
+      - redis
+      - elasticsearch
+    networks:
+      - openwearables-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '1.0'
+          memory: 2G
+
+  # Celery Worker for Background Tasks
+  celery-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+    image: openwearables:latest
+    container_name: celery-worker
+    restart: unless-stopped
+    command: celery -A openwearables.core.tasks worker --loglevel=info --concurrency=4
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_URL=postgresql://openwearables:${DB_PASSWORD}@postgres:5432/openwearables
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - SECRET_KEY=${SECRET_KEY}
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+      - ./config:/app/config:ro
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - openwearables-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 3G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+
+  # Celery Beat for Scheduled Tasks
+  celery-beat:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+    image: openwearables:latest
+    container_name: celery-beat
+    restart: unless-stopped
+    command: celery -A openwearables.core.tasks beat --loglevel=info
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_URL=postgresql://openwearables:${DB_PASSWORD}@postgres:5432/openwearables
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - SECRET_KEY=${SECRET_KEY}
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+      - ./config:/app/config:ro
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - openwearables-network
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: openwearables-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=openwearables
+      - POSTGRES_USER=openwearables
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    ports:
+      - "5432:5432"
+    networks:
+      - openwearables-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U openwearables -d openwearables"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+
+  # Redis for Caching and Message Broker
+  redis:
+    image: redis:7-alpine
+    container_name: openwearables-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+      - ./config/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    ports:
+      - "6379:6379"
+    networks:
+      - openwearables-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1G
+        reservations:
+          cpus: '0.2'
+          memory: 512M
+
+  # Elasticsearch for Logging and Search
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: openwearables-elasticsearch
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms1g -Xmx1g
+      - xpack.security.enabled=false
+      - xpack.security.enrollment.enabled=false
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    networks:
+      - openwearables-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+
+  # Kibana for Log Visualization
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: openwearables-kibana
+    restart: unless-stopped
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - SERVER_NAME=kibana
+      - SERVER_HOST=0.0.0.0
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    networks:
+      - openwearables-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5601/api/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Prometheus for Metrics Collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: openwearables-prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - openwearables-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Grafana for Metrics Visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: openwearables-grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./config/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - openwearables-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # NGINX Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: openwearables-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./config/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./config/nginx/ssl:/etc/nginx/ssl:ro
+      - ./logs/nginx:/var/log/nginx
+    depends_on:
+      - openwearables-app
+    networks:
+      - openwearables-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Jaeger for Distributed Tracing
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: openwearables-jaeger
+    restart: unless-stopped
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - "16686:16686"
+      - "14268:14268"
+    networks:
+      - openwearables-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:16686/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # MinIO for Object Storage
+  minio:
+    image: minio/minio:latest
+    container_name: openwearables-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ACCESS_KEY}
+      - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      - openwearables-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Backup Service
+  backup:
+    image: postgres:15-alpine
+    container_name: openwearables-backup
+    restart: "no"
+    environment:
+      - PGPASSWORD=${DB_PASSWORD}
+    volumes:
+      - ./backups:/backups
+      - ./scripts/backup.sh:/backup.sh:ro
+    command: /bin/sh -c "chmod +x /backup.sh && /backup.sh"
+    depends_on:
+      - postgres
+    networks:
+      - openwearables-network
+    profiles:
+      - backup
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  elasticsearch_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  minio_data:
+    driver: local
+
+networks:
+  openwearables-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16 
